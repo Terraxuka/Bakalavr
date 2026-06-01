@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  user_id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                String  @unique
+  hashed_password      String
+  timezone             String
+  max_tasks_per_day    Int?
+  sleep_start_minutes  Int?
+  sleep_end_minutes    Int?
+
+  // Зв'язки
+  tasks           Task[]
+  recommendations Recommendation[]
+  activity_logs   ActivityLog[]
+
+  @@map("users")
+}
+
+model Task {
+  task_id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String    @db.Uuid
+  title              String
+  description        String?   @db.Text
+  estimated_duration Int
+  priority_level     Int
+  deadline           DateTime
+  status             String
+  start_time         DateTime?
+  end_time           DateTime?
+
+  // Зв'язки та каскадне видалення
+  user            User             @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  recommendations Recommendation[]
+  activity_logs   ActivityLog[]
+
+  @@index([deadline])
+  @@map("tasks")
+}
+
+model Recommendation {
+  recommendation_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  task_id           String   @db.Uuid
+  user_id           String   @db.Uuid
+  suggested_start   DateTime
+  suggested_end     DateTime
+  feedback          String?
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  task Task @relation(fields: [task_id], references: [task_id], onDelete: Cascade)
+
+  @@index([suggested_start, suggested_end])
+  @@map("recommendations")
+}
+
+model ActivityLog {
+  log_id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id               String   @db.Uuid
+  task_id               String   @db.Uuid
+  actual_start_time     DateTime
+  actual_end_time       DateTime
+  deviation_coefficient Float? // Коефіцієнт для інтелектуального аналізу
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  task Task @relation(fields: [task_id], references: [task_id], onDelete: Cascade)
+
+  @@index([actual_start_time, actual_end_time])
+  @@map("activity_logs")
+}
